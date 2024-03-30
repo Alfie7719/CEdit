@@ -54,27 +54,27 @@
     <div id="pyedit-title">PyEdit</div>
     <button id="run-button" onclick="runCode()">Run</button>
     <div id="editor"></div>
-    <div id="output"><?php if(isset($_POST['code'])) { 
-        $code = $_POST['code'];
-        $output = '';
-        $file = 'temp.py';
-        file_put_contents($file, $code);
+    <div id="output"></div>
 
-        exec("python $file 2>&1", $output);
-        
-        unlink($file);
-
-        foreach ($output as $line) {
-            echo htmlspecialchars($line) . "<br>";
-        }
-    } ?></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs/loader.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
     <script>
+        async function runCode() {
+            const code = window.editor.getValue();
+            const outputDiv = document.getElementById("output");
+            outputDiv.textContent = ''; // Clear previous output
+
+            await languagePluginLoader;
+
+            pyodide.runPythonAsync(code).then(output => {
+                outputDiv.textContent = output;
+            }).catch(error => {
+                outputDiv.textContent = error.message;
+            });
+        }
+
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs' }});
         require(['vs/editor/editor.main'], function() {
-            var editor = monaco.editor.create(document.getElementById('editor'), {
+            const editor = monaco.editor.create(document.getElementById('editor'), {
                 value: [
                     '# Write your Python code here'
                 ].join('\n'),
@@ -84,20 +84,6 @@
             });
             window.editor = editor;
         });
-
-        function runCode() {
-            var code = window.editor.getValue();
-            // Send code to PHP script for execution
-            var xmlhttp = new XMLHttpRequest();
-            xmlhttp.onreadystatechange = function() {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("output").innerHTML = this.responseText;
-                }
-            };
-            xmlhttp.open("POST", "<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>", true);
-            xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-            xmlhttp.send("code=" + encodeURIComponent(code));
-        }
     </script>
 </body>
 </html>
